@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { GlobalStyles } from './GlobalStyles';
 import 'modern-normalize';
 import { nanoid } from 'nanoid';
@@ -7,35 +7,24 @@ import { ContactForm } from './ContactForm/ContactForm';
 import { ContactList } from './ContactList/ContactList';
 import { Filter } from './Filter/Filter';
 import { MainForm, MainTitle, Title } from './App.styled';
-import initialContacts from '../contacts.json';
 
-export class App extends Component {
-  state = {
-    contacts: [],
-    filter: '',
-  };
+const LS_KEY = 'contacts';
 
-  componentDidMount() {
-    const savedContacts = localStorage.getItem('contacts');
-    console.log (savedContacts);
-    if (savedContacts !== null) {
-      const parsedContacts = JSON.parse(savedContacts);
-      this.setState({contacts: parsedContacts});
-      return;
-    }
-    this.setState({contacts: initialContacts});
-  }
+export const App = () => {
+  const [contacts, setContacts] = useState(() => {
+    const savedContacts = localStorage.getItem(LS_KEY);
+    return savedContacts !== null ? JSON.parse(savedContacts) : [];
+  });
+  const [filter, setFilter] = useState('');
 
-  componentDidUpdate(prevProps, prevState) {
-    if (prevState.contacts !== this.state.contacts) {
-      localStorage.setItem ('contacts', JSON.stringify(this.state.contacts));
-    }
-  }
+  useEffect(() => {
+    localStorage.setItem(LS_KEY, JSON.stringify(contacts));
+  }, [contacts]);
 
-  handleSubmit = (values, { resetForm }) => {
+  const handleSubmit = (values, { resetForm }) => {
     let newContact = values;
 
-    const check = this.state.contacts.filter(
+    const check = contacts.filter(
       contact => contact.name.toLowerCase() === newContact.name.toLowerCase()
     );
 
@@ -44,9 +33,7 @@ export class App extends Component {
     } else {
       newContact.id = nanoid();
 
-      this.setState(prevState => ({
-        contacts: [...prevState.contacts, newContact],
-      }));
+      setContacts(prevState => [...prevState, newContact]);
 
       resetForm({
         name: '',
@@ -55,42 +42,32 @@ export class App extends Component {
     }
   };
 
-  handleFilter = ({ target: { name, value } }) => {
-    this.setState({
-      [name]: value,
+  const handleFilter = ({ target: { value } }) => {
+    setFilter(value);
+  };
+
+  const makeFiltredContacts = () => {
+    return contacts.filter(({ name }) => {
+      return name.toLowerCase().includes(filter.toLowerCase());
     });
   };
 
-  handleDelete = evtId => {
-    this.setState({
-      contacts: this.state.contacts.filter(({ id }) => id !== evtId),
-    });
+  const handleDelete = evtId => {
+    setContacts(contacts.filter(({ id }) => id !== evtId));
   };
 
-  makeFiltredContacts = () => {
-    if (!this.state.filter) {
-      return;
-    }
-
-    return this.state.contacts.filter(({ name }) => {
-      return name.toLowerCase().includes(this.state.filter.toLowerCase());
-    });
-  };
-
-  render() {
     return (
       <MainForm>
         <GlobalStyles />
         <MainTitle>Phonebook</MainTitle>
-        <ContactForm onFormSubmit={this.handleSubmit} />
+        <ContactForm onFormSubmit={handleSubmit} />
         <Title>Contacts</Title>
-        <Filter onFilter={this.handleFilter} />
+        <Filter onFilter={handleFilter} />
         <ContactList
-          contacts={this.state.contacts}
-          filteredContacts={this.makeFiltredContacts()}
-          onDelete={this.handleDelete}
+          contacts={contacts}
+          filteredContacts={makeFiltredContacts()}
+          onDelete={handleDelete}
         />
       </MainForm>
     );
   }
-}
